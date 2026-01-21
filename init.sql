@@ -1,4 +1,4 @@
--- Seed da API (simulação)
+/*Tabela de seed da API para test*/
 CREATE TABLE api_enrichments_seed (
   id UUID PRIMARY KEY,
   id_workspace UUID,
@@ -10,7 +10,7 @@ CREATE TABLE api_enrichments_seed (
   updated_at TIMESTAMP
 );
 
--- Bronze
+/*Bronze*/
 CREATE TABLE bronze_enrichments (
   id UUID PRIMARY KEY,
   payload JSONB NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE bronze_enrichments (
   dw_updated_at TIMESTAMP NOT NULL
 );
 
--- Gold
+/*Gold*/
 CREATE TABLE gold_enrichments (
   id_enriquecimento UUID PRIMARY KEY,
   id_workspace UUID,
@@ -36,7 +36,8 @@ CREATE TABLE gold_enrichments (
   data_atualizacao_dw TIMESTAMP
 );
 
--- Seed inicial
+/*insere 5000 dados fake na tabela api_enrichments_seed*/
+
 INSERT INTO api_enrichments_seed
 SELECT
   gen_random_uuid(),
