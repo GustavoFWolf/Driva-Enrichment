@@ -4,6 +4,8 @@ O projeto tem como solução utilizar um ambiente local com Docker contendo Post
 A API expõe um endpoint simulando a API de enriquecimento, e um endpoint da leitura de dados da camada GOLD, com os dados já enriquecidos.
 O n8n cria workflows que coleta dados de enriquecimento, armazena os dados brutos na camada Bronze e processa, transformando-o na camada Gold.
 
+Para o funcionamento necessário instalar o docker, docker-compose, FastAPI, psycopg2, e o PostgreSQL.
+
 Para subir o ambiente digite os comandos na terminal:
 docker-compose build
 docker-compose up
