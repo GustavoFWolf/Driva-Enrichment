@@ -11,35 +11,25 @@ app = FastAPI(title="Driva Enrichment API")
 
 security = HTTPBearer()
 
-
-# -------------------------------
-# Database
-# -------------------------------
+#se conecta com o banco de dados
 def get_conn():
     return psycopg2.connect(DATABASE_URL)
 
-
-# -------------------------------
-# Auth
-# -------------------------------
+#realiza a verificação da autenticação com a API_KEY
 def auth(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     if credentials.credentials != API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
-
-# -------------------------------
-# Fonte – Enrichments
-# -------------------------------
+    
+# endpoint : /people/v1/enrichments
 @app.get("/people/v1/enrichments", dependencies=[Depends(auth)])
 def enrichments(
     page: int = Query(1, ge=1),
     limit: int = Query(50, le=100)
 ):
-    # Simula rate limit
     if random.random() < 0.05:
-        raise HTTPException(status_code=429, detail="Too Many Requests")
+        raise HTTPException(status_code=429, detail="Too Many Requests") #Simulaçao de erro
 
     offset = (page - 1) * limit
     conn = get_conn()
@@ -48,6 +38,8 @@ def enrichments(
     cur.execute("SELECT COUNT(*) FROM api_enrichments_seed")
     total_items = cur.fetchone()[0]
     total_pages = (total_items + limit - 1) // limit
+
+    #le os dados da tabela
 
     cur.execute("""
         SELECT id, id_workspace, workspace_name, total_contacts,
@@ -59,6 +51,8 @@ def enrichments(
 
     rows = cur.fetchall()
     conn.close()
+
+    #gera o arquivo JSON com a resposta
 
     data = [{
         "id": r[0],
@@ -81,14 +75,14 @@ def enrichments(
         "data": data
     }
 
+#endpoint /analytics/overview
 
-# -------------------------------
-# Analytics – Overview
-# -------------------------------
 @app.get("/analytics/overview", dependencies=[Depends(auth)])
 def overview():
     conn = get_conn()
     cur = conn.cursor()
+
+    #retira e calcula alguns dados da tabela Gold
 
     cur.execute("""
         SELECT
@@ -106,11 +100,8 @@ def overview():
         "tempo_medio_minutos": avg_time,
         "taxa_sucesso": success_rate
     }
+#endpoint /analytics/enrichments
 
-
-# -------------------------------
-# Analytics – Enrichments
-# -------------------------------
 @app.get("/analytics/enrichments", dependencies=[Depends(auth)])
 def list_gold(
     page: int = 1,
@@ -132,7 +123,7 @@ def list_gold(
     """, (limit, offset))
 
     cols = [desc[0] for desc in cur.description]
-    rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    rows = [dict(zip(cols, r)) for r in cur.fetchall()] #cria uma lista de dicionários com os dados da tabela GOLD.
     conn.close()
 
     return {
