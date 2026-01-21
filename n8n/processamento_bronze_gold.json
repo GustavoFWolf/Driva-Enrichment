@@ -1,0 +1,45 @@
+{
+  "name": "DW - Processamento Gold",
+  "nodes": [
+    {
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "position": [0, 0]
+    },
+    {
+      "id": "select",
+      "name": "Select Bronze",
+      "type": "n8n-nodes-base.postgres",
+      "position": [200, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT payload FROM bronze_enrichments;"
+      }
+    },
+    {
+      "id": "transform",
+      "name": "Transform",
+      "type": "n8n-nodes-base.function",
+      "position": [400, 0],
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  const p = item.json.payload;\n\n  const created = new Date(p.created_at);\n  const updated = new Date(p.updated_at);\n  const duracao = (updated - created) / 60000;\n\n  const statusMap = {\n    PROCESSING: 'EM_PROCESSAMENTO',\n    COMPLETED: 'CONCLUIDO',\n    FAILED: 'FALHOU',\n    CANCELED: 'CANCELADO'\n  };\n\n  const tipoMap = {\n    PERSON: 'PESSOA',\n    COMPANY: 'EMPRESA'\n  };\n\n  let categoria = 'PEQUENO';\n  if (p.total_contacts > 1000) categoria = 'MUITO_GRANDE';\n  else if (p.total_contacts > 500) categoria = 'GRANDE';\n  else if (p.total_contacts >= 100) categoria = 'MEDIO';\n\n  return {\n    json: {\n      id_enriquecimento: p.id,\n      id_workspace: p.id_workspace,\n      nome_workspace: p.workspace_name,\n      total_contatos: p.total_contacts,\n      tipo_contato: tipoMap[p.contact_type],\n      status_processamento: statusMap[p.status],\n      data_criacao: p.created_at,\n      data_atualizacao: p.updated_at,\n      duracao_processamento_minutos: duracao,\n      tempo_por_contato_minutos: duracao / p.total_contacts,\n      processamento_sucesso: p.status === 'COMPLETED',\n      categoria_tamanho_job: categoria,\n      necessita_reprocessamento: ['FAILED', 'CANCELED'].includes(p.status),\n      data_atualizacao_dw: new Date()\n    }\n  };\n});"
+      }
+    },
+    {
+      "id": "upsert",
+      "name": "Upsert Gold",
+      "type": "n8n-nodes-base.postgres",
+      "position": [600, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO gold_enrichments (\n  id_enriquecimento, id_workspace, nome_workspace,\n  total_contatos, tipo_contato, status_processamento,\n  data_criacao, data_atualizacao,\n  duracao_processamento_minutos, tempo_por_contato_minutos,\n  processamento_sucesso, categoria_tamanho_job,\n  necessita_reprocessamento, data_atualizacao_dw\n)\nVALUES (\n  {{$json.id_enriquecimento}}, {{$json.id_workspace}}, {{$json.nome_workspace}},\n  {{$json.total_contatos}}, {{$json.tipo_contato}}, {{$json.status_processamento}},\n  {{$json.data_criacao}}, {{$json.data_atualizacao}},\n  {{$json.duracao_processamento_minutos}}, {{$json.tempo_por_contato_minutos}},\n  {{$json.processamento_sucesso}}, {{$json.categoria_tamanho_job}},\n  {{$json.necessita_reprocessamento}}, {{$json.data_atualizacao_dw}}\n)\nON CONFLICT (id_enriquecimento)\nDO UPDATE SET data_atualizacao_dw = now();"
+      }
+    }
+  ],
+  "connections": {
+    "Start": { "main": [[{ "node": "Select Bronze", "type": "main" }]] },
+    "Select Bronze": { "main": [[{ "node": "Transform", "type": "main" }]] },
+    "Transform": { "main": [[{ "node": "Upsert Gold", "type": "main" }]] }
+  }
+}

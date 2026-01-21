@@ -1,0 +1,79 @@
+{
+  "name": "DW - Ingestão Bronze",
+  "nodes": [
+    {
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "position": [0, 0]
+    },
+    {
+      "id": "setPage",
+      "name": "Set Page",
+      "type": "n8n-nodes-base.set",
+      "position": [200, 0],
+      "parameters": {
+        "values": {
+          "number": [
+            { "name": "page", "value": 1 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "http",
+      "name": "Fetch Enrichments",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [400, 0],
+      "parameters": {
+        "url": "http://api:3000/people/v1/enrichments",
+        "method": "GET",
+        "queryParametersUi": {
+          "parameter": [
+            { "name": "page", "value": "={{$json.page}}" },
+            { "name": "limit", "value": "50" }
+          ]
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer driva_test_key_abc123xyz789"
+            }
+          ]
+        },
+        "options": {
+          "retry": {
+            "maxTries": 5,
+            "waitBetweenTries": 2000
+          }
+        }
+      }
+    },
+    {
+      "id": "split",
+      "name": "Split Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [600, 0],
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "id": "postgres",
+      "name": "Upsert Bronze",
+      "type": "n8n-nodes-base.postgres",
+      "position": [800, 0],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO bronze_enrichments (id, payload, dw_ingested_at, dw_updated_at)\nVALUES (\n  {{$json.id}},\n  {{$json}},\n  COALESCE((SELECT dw_ingested_at FROM bronze_enrichments WHERE id = {{$json.id}}), now()),\n  now()\n)\nON CONFLICT (id)\nDO UPDATE SET payload = EXCLUDED.payload, dw_updated_at = now();"
+      }
+    }
+  ],
+  "connections": {
+    "Start": { "main": [[{ "node": "Set Page", "type": "main" }]] },
+    "Set Page": { "main": [[{ "node": "Fetch Enrichments", "type": "main" }]] },
+    "Fetch Enrichments": { "main": [[{ "node": "Split Items", "type": "main" }]] },
+    "Split Items": { "main": [[{ "node": "Upsert Bronze", "type": "main" }]] }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "DW - Orquestrador (5 min)",
+  "nodes": [
+    {
+      "id": "cron",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "position": [0, 0],
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            { "mode": "everyX", "value": 5, "unit": "minutes" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ingest",
+      "name": "Call Ingest Bronze",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [200, 0],
+      "parameters": {
+        "workflowId": "DW - Ingestão Bronze"
+      }
+    },
+    {
+      "id": "process",
+      "name": "Call Process Gold",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [400, 0],
+      "parameters": {
+        "workflowId": "DW - Processamento Gold"
+      }
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [[{ "node": "Call Ingest Bronze", "type": "main" }]] },
+    "Call Ingest Bronze": { "main": [[{ "node": "Call Process Gold", "type": "main" }]] }
+  }
+}
