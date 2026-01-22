@@ -10,9 +10,17 @@ CREATE TABLE api_enrichments_seed (
   updated_at TIMESTAMP
 );
 
+
 /*Bronze*/
 CREATE TABLE bronze_enrichments (
   id UUID PRIMARY KEY,
+  id_workspace UUID,
+  workspace_name TEXT,
+  total_contacts INTEGER,
+  contact_type TEXT,
+  status TEXT,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
   payload JSONB NOT NULL,
   dw_ingested_at TIMESTAMP NOT NULL,
   dw_updated_at TIMESTAMP NOT NULL
